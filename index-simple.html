@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab & Class Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .modal { display: none; }
+        .modal.active { display: flex; }
+        .management-tab-content { display: none; }
+        .management-tab-content.active { display: block; }
+        .attendance-tab-content { display: none; }
+        .attendance-tab-content.active { display: block; }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold flex items-center">
+                        <i class="fas fa-flask mr-3"></i>
+                        Lab & Class Management System
+                    </h1>
+                    <p class="text-blue-100 mt-2">Manage laboratories, classes, and student attendance efficiently</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="exportData('xls')" class="bg-white text-green-600 px-4 py-2 rounded-lg hover:bg-green-50 transition duration-200">
+                        <i class="fas fa-file-excel mr-2"></i>Export XLS
+                    </button>
+                    <label class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition duration-200 cursor-pointer">
+                        <i class="fas fa-upload mr-2"></i>Import XLS
+                        <input type="file" id="import-xls-input" accept=".xlsx,.xls" class="hidden" onchange="importData(event)">
+                    </label>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Tab Navigation -->
+        <div class="bg-white rounded-lg shadow-md mb-6">
+            <div class="flex border-b">
+                <button class="tab-btn px-6 py-3 text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600 transition duration-200" data-tab="dashboard">
+                    <i class="fas fa-chart-line mr-2"></i>Dashboard
+                </button>
+                <button class="tab-btn px-6 py-3 text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600 transition duration-200" data-tab="lab-management">
+                    <i class="fas fa-flask mr-2"></i>Lab Management
+                </button>
+                <button class="tab-btn px-6 py-3 text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600 transition duration-200" data-tab="class-management">
+                    <i class="fas fa-graduation-cap mr-2"></i>Class Management
+                </button>
+                <button class="tab-btn px-6 py-3 text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600 transition duration-200" data-tab="lab-attendance">
+                    <i class="fas fa-user-check mr-2"></i>Lab Attendance
+                </button>
+                <button class="tab-btn px-6 py-3 text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600 transition duration-200" data-tab="class-attendance">
+                    <i class="fas fa-users mr-2"></i>Class Attendance
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard-tab" class="tab-content active">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Total Labs</p>
+                            <p class="text-2xl font-bold text-gray-800" id="total-labs">0</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-full">
+                            <i class="fas fa-flask text-blue-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Total Classes</p>
+                            <p class="text-2xl font-bold text-gray-800" id="total-classes">0</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-full">
+                            <i class="fas fa-graduation-cap text-green-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Today Lab Attendance</p>
+                            <p class="text-2xl font-bold text-gray-800" id="today-lab-attendance">0</p>
+                        </div>
+                        <div class="bg-purple-100 p-3 rounded-full">
+                            <i class="fas fa-user-check text-purple-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Today Class Attendance</p>
+                            <p class="text-2xl font-bold text-gray-800" id="today-class-attendance">0</p>
+                        </div>
+                        <div class="bg-orange-100 p-3 rounded-full">
+                            <i class="fas fa-users text-orange-600"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Lab Attendance Overview</h3>
+                    <canvas id="lab-chart"></canvas>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Class Attendance Overview</h3>
+                    <canvas id="class-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lab Management Tab -->
+        <div id="lab-management-tab" class="tab-content">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">Lab Management</h2>
+                    <button id="add-lab-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200">
+                        <i class="fas fa-plus mr-2"></i>Add Lab
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full table-auto">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lab Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Strength</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lab-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Lab rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Class Management Tab -->
+        <div id="class-management-tab" class="tab-content">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">Class Management</h2>
+                    <button id="add-class-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200">
+                        <i class="fas fa-plus mr-2"></i>Add Class
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full table-auto">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Strength</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="class-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Class rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lab Attendance Tab -->
+        <div id="lab-attendance-tab" class="tab-content">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">Lab Attendance</h2>
+                    <button id="add-lab-attendance-btn" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition duration-200">
+                        <i class="fas fa-plus mr-2"></i>Add Attendance
+                    </button>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
+                    <input type="date" id="lab-attendance-date" class="w-full md:w-auto px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div id="lab-attendance-container" class="space-y-4">
+                    <!-- Lab attendance cards will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Class Attendance Tab -->
+        <div id="class-attendance-tab" class="tab-content">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">Class Attendance</h2>
+                    <button id="add-class-attendance-btn" class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition duration-200">
+                        <i class="fas fa-plus mr-2"></i>Add Attendance
+                    </button>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
+                    <input type="date" id="class-attendance-date" class="w-full md:w-auto px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div id="class-attendance-container" class="space-y-4">
+                    <!-- Class attendance cards will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Lab Modal -->
+    <div id="lab-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Add Lab</h3>
+            <form id="lab-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Lab Name</label>
+                    <input type="text" id="lab-name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Strength</label>
+                    <input type="number" id="lab-strength" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('lab-modal')" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-save mr-2"></i>Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Class Modal -->
+    <div id="class-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Add Class</h3>
+            <form id="class-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Class Name</label>
+                    <input type="text" id="class-name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Strength</label>
+                    <input type="number" id="class-strength" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('class-modal')" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                        <i class="fas fa-save mr-2"></i>Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lab Attendance Modal -->
+    <div id="lab-attendance-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Add Lab Attendance</h3>
+            <form id="lab-attendance-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Lab</label>
+                    <select id="lab-attendance-lab" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select Lab</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Student Name</label>
+                    <input type="text" id="lab-attendance-student" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Student ID</label>
+                    <input type="text" id="lab-attendance-student-id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select id="lab-attendance-status" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select Status</option>
+                        <option value="present">Present</option>
+                        <option value="absent">Absent</option>
+                        <option value="late">Late</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('lab-attendance-modal')" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+                        <i class="fas fa-save mr-2"></i>Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Class Attendance Modal -->
+    <div id="class-attendance-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Add Class Attendance</h3>
+            <form id="class-attendance-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+                    <select id="class-attendance-class" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select Class</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Student Name</label>
+                    <input type="text" id="class-attendance-student" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Student ID</label>
+                    <input type="text" id="class-attendance-student-id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select id="class-attendance-status" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select Status</option>
+                        <option value="present">Present</option>
+                        <option value="absent">Absent</option>
+                        <option value="late">Late</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('class-attendance-modal')" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700">
+                        <i class="fas fa-save mr-2"></i>Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
